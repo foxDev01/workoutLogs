@@ -8,6 +8,9 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QTextStream>
+#include <QDate>
+#include <QDebug>
 
 
 
@@ -26,6 +29,7 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    void saveDataBeforeClosing();
 
 private slots:
     void on_pushButton_2_pressed();
@@ -40,13 +44,10 @@ private slots:
 
     void on_pushButton_10_pressed();
 
-
-
     void on_lineEdit_returnPressed();
-
-    void on_pushButton_6_pressed();
-
-    void on_pushButton_7_clicked();
+protected:
+    void closeEvent(QCloseEvent *event) override;
+   // void openEvent(QCopenEvent *event);
 
 private:
     Ui::MainWindow *ui;

@@ -4,68 +4,29 @@
 #include "QtSql/QSqlDatabase"
 #include "QSqlQuery"
 
+/*
+#include <QtAndroid>
 
-
-
-void loadTableDataFromSettings(const QString& groupName, QTableWidget* tableWidget)
+void requestPermissions()
 {
-    QSettings settings;
-    settings.beginGroup(groupName);
+    QtAndroid::PermissionResultMap result = QtAndroid::requestPermissionsSync(
+        QStringList() << "android.permission.READ_EXTERNAL_STORAGE"
+                      << "android.permission.WRITE_EXTERNAL_STORAGE");
 
-    // Загружаем данные в таблицу
-    int rowCount = settings.value("rowCount", 0).toInt();
-    int columnCount = settings.value("columnCount", 0).toInt();
-    tableWidget->setRowCount(rowCount);
-    tableWidget->setColumnCount(columnCount);
-
-    for (int row = 0; row < rowCount; ++row)
-    {
-        for (int column = 0; column < columnCount; ++column)
-        {
-            QString key = QString("item_%1_%2").arg(row).arg(column);
-            QString value = settings.value(key).toString();
-            QTableWidgetItem* item = new QTableWidgetItem(value);
-            tableWidget->setItem(row, column, item);
-        }
+    if (result["android.permission.READ_EXTERNAL_STORAGE"] == QtAndroid::PermissionResult::Denied
+        || result["android.permission.WRITE_EXTERNAL_STORAGE"] == QtAndroid::PermissionResult::Denied) {
+        // Пользователь отклонил разрешения
+        // Обработайте это соответствующим образом
     }
-
-    settings.endGroup();
 }
-
-void saveTableDataToSettings(const QString& groupName, QTableWidget* tableWidget)
-{
-    QSettings settings;
-    settings.beginGroup(groupName);
-
-    // Сохраняем данные из таблицы
-    settings.setValue("rowCount", tableWidget->rowCount());
-    settings.setValue("columnCount", tableWidget->columnCount());
-
-    for (int row = 0; row < tableWidget->rowCount(); ++row)
-    {
-        for (int column = 0; column < tableWidget->columnCount(); ++column)
-        {
-            QTableWidgetItem* item = tableWidget->item(row, column);
-            if (item)
-            {
-                settings.setValue(QString("item_%1_%2").arg(row).arg(column), item->text());
-            }
-        }
-    }
-
-    settings.endGroup();
-}
-
-
-
-
-
-
+*/
 // функция для сохранения в csv
 void saveTableDataToCSV(const QString& filename, QTableWidget* tableWidget)
 {
     QFile file(filename);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
+
+    // Открываем файл для записи, если он существует, его содержимое будет перезаписано
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text))
     {
         QTextStream stream(&file);
 
@@ -102,6 +63,9 @@ void saveTableDataToCSV(const QString& filename, QTableWidget* tableWidget)
         qDebug() << "Ошибка сохранения файла " << filename;
     }
 }
+
+
+
 
 
 // функция для сохранения в json
@@ -145,52 +109,93 @@ void saveTableDataToJson(const QString& filename, QTableWidget* tableWidget)
     }
 }
 
-
 void saveTableDataToINI(const QString& filename, QTableWidget* tableWidget)
 {
-    QSettings settings(filename, QSettings::IniFormat);
+    QFile file(filename);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        qDebug() << "Ошибка открытия файла для записи: " << filename;
+        return;
+    }
+
+    QTextStream stream(&file);
+
+    // Сохраняем названия столбцов
+    QStringList headers;
+    for (int column = 0; column < tableWidget->columnCount(); ++column)
+    {
+        headers << tableWidget->horizontalHeaderItem(column)->text();
+    }
+    stream << "[General]\n";
+    stream << "ColumnHeaders=" << headers.join(", ") << "\n\n";
 
     // Сохраняем данные из ячеек таблицы
     for (int row = 0; row < tableWidget->rowCount(); ++row)
     {
+        stream << "[Row" << row << "]\n";
         for (int column = 0; column < tableWidget->columnCount(); ++column)
         {
             QTableWidgetItem* item = tableWidget->item(row, column);
             if (item)
             {
-                QString key = QString("Item%1_%2").arg(row).arg(column);
-                QString value = item->text();
-                settings.setValue(key, value);
+                stream << "Column" << column << "=" << item->text() << "\n";
             }
         }
+        stream << "\n";
     }
-}
 
+    file.close();
+}
 
 
 void loadTableDataFromINI(const QString& filename, QTableWidget* tableWidget)
 {
     QSettings settings(filename, QSettings::IniFormat);
 
-    // Очистка таблицы перед загрузкой данных
+    // Проверяем, существует ли файл
+    if (!QFile(filename).exists()) {
+        qDebug() << "Файл не существует: " << filename;
+        return; // Выходим из функции, так как данных для загрузки нет
+    }
+
+    // Очищаем таблицу перед загрузкой данных
     tableWidget->clear();
 
-    // Загрузка данных из INI файла в таблицу
-    for (int row = 0; row < tableWidget->rowCount(); ++row)
+    // Загружаем названия столбцов
+    QStringList headers = settings.value("ColumnHeaders").toStringList();
+    tableWidget->setColumnCount(headers.size());
+    tableWidget->setHorizontalHeaderLabels(headers);
+
+    qDebug() << "Загрузка данных из файла INI";
+
+    // Получаем список всех групп (строк)
+    QStringList rowGroups = settings.childGroups();
+
+    // Устанавливаем количество строк в таблице
+    tableWidget->setRowCount(rowGroups.size());
+
+    // Загружаем данные из INI файла в таблицу
+    for (int i = 0; i < rowGroups.size(); ++i)
     {
-        for (int column = 0; column < tableWidget->columnCount(); ++column)
+        QString groupKey = rowGroups.at(i);
+        settings.beginGroup(groupKey);
+        for (int column = 0; column < headers.size(); ++column)
         {
-            QString key = QString("Item%1_%2").arg(row).arg(column);
-            if (settings.contains(key))
-            {
-                QString value = settings.value(key).toString();
-                QTableWidgetItem* item = new QTableWidgetItem(value);
-                tableWidget->setItem(row, column, item);
-            }
+            QString key = QString("Column%1").arg(column);
+            QString value = settings.value(key).toString();
+            QTableWidgetItem* item = new QTableWidgetItem(value);
+            tableWidget->setItem(i, column, item);
+            qDebug() << "Загружено значение" << value << "в строку" << i << "столбец" << column;
         }
+        settings.endGroup();
     }
+
+    qDebug() << "Загрузка данных завершена";
 }
 
+
+
+//необходмо разобраться с загрузкой данный в qtable/ мб по другому сохранять. такой же csv
 
 // функция для открвтия  json
 void loadTableDataFromJSON(const QString& filename, QTableWidget* tableWidget)

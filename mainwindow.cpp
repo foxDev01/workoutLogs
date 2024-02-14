@@ -4,6 +4,8 @@
 #include "function.cpp"
 #include <QSettings>
 #include <QDesktopServices>
+
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -12,8 +14,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lineEdit_11->setText( QDate::currentDate().toString("dd_MM_yyyy"));
     ui->lineEdit_10->setText(QDir::rootPath());
 
-//    loadTableDataFromINI("serushon.ini", ui->tableWidget);
-//    saveTableDataToINI("serushon.ini", ui->tableWidget);
+   // ui->tableWidget->clear();
+    // Далее, если нужно загрузить данные из файла:
+    loadTableDataFromINI("data.ini", ui->tableWidget); // Загружаем данные из файла
+
 
 }
 
@@ -61,6 +65,22 @@ void MainWindow::on_pushButton_2_pressed()
 
 
 }
+
+void MainWindow::saveDataBeforeClosing() {
+    saveTableDataToINI("data.ini", ui->tableWidget);
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    // В этой функции вы можете добавить код для сохранения данных или других действий перед закрытием окна
+    // Например:
+    saveTableDataToINI("data.ini", ui->tableWidget);
+
+    // Вызов базовой реализации closeEvent, чтобы обеспечить корректное закрытие окна
+    QMainWindow::closeEvent(event);
+}
+
+
 
 
 void MainWindow::on_pushButton_3_pressed()
@@ -149,18 +169,14 @@ void MainWindow::on_pushButton_5_pressed()
 //    loadTableDataFromJSON(QFileDialog::getOpenFileName(this, "Выберите файл CSV"), ui->tableWidget_2);
 }
 
-// добавление упражнениий на день
 
 
 
-
+// на открытие проводника
 void MainWindow::on_pushButton_10_pressed()
 {
 
 }
-
-
-
 
 
 
@@ -169,49 +185,8 @@ void MainWindow::on_lineEdit_returnPressed()
     ui->lineEdit_2->setFocus();
 }
 
-
-void MainWindow::on_pushButton_6_pressed()
-{
-    int selectedRow =  ui->tableWidget->currentRow(); // получаем выбранную строку
-    if (selectedRow != -1) { // если строка выбрана
-        //ui->tableWidget->removeRow(selectedRow); // удаляем выбранную строку
-         ui->lineEdit->setText(ui->tableWidget->item(selectedRow, 1)->text());
-         ui->lineEdit_2->setText(ui->tableWidget->item(selectedRow, 2)->text());
-         ui->lineEdit_3->setText(ui->tableWidget->item(selectedRow, 3)->text());
-         ui->lineEdit_4->setText(ui->tableWidget->item(selectedRow, 4)->text());
-         ui->lineEdit_5->setText(ui->tableWidget->item(selectedRow, 5)->text());
-         ui->lineEdit_6->setText(ui->tableWidget->item(selectedRow, 6)->text());
-         ui->lineEdit_7->setText(ui->tableWidget->item(selectedRow, 7)->text());
-         ui->lineEdit_8->setText(ui->tableWidget->item(selectedRow, 8)->text());
-         ui->lineEdit_9->setText(ui->tableWidget->item(selectedRow, 9)->text());
-         ui->lineEdit_12->setText(ui->tableWidget->item(selectedRow, 10)->text());
-         ui->lineEdit_13->setText(ui->tableWidget->item(selectedRow, 11)->text());
+// для изменнеия строки
 
 
 
-
-    }
-}
-
-
-void MainWindow::on_pushButton_7_clicked()
-{
-    // Подключаем базу данных
-    QSqlDatabase db;
-    db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName("log.db");
-    db.open();
-
-    // Осуществляем запрос
-    QSqlQuery query;
-    query.exec("SELECT _id, Name, iteration1 FROM exercises");
-
-    // Выводим значения из запроса
-    while (query.next()) {
-         QString _id = query.value(0).toString();
-         QString Name = query.value(1).toString();
-         QString iteration1 = query.value(2).toString();
-         ui->textEdit->insertPlainText(_id+" "+Name+" "+iteration1+"\n");
-    }
-}
 
